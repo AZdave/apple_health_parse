@@ -1,0 +1,45 @@
+#!/bin/bash
+base=`basename $0`
+rem="${base}: Extract apple health data. Usage: $base export_DATE.zip"
+if [ "0" = "$#" ]; then echo -e $rem; exit 1; fi
+dir=`basename $1 .zip`
+echo "dir: $dir"
+echo ""
+echo "Step 1. Unzipping to $dir ..."
+unzip -x -d $dir $dir.zip
+err1="$?"
+if [ "$err1" = "0" ]; then
+   echo "Step 1 Sucess!"
+else
+   echo "ERROR: Step 1 failure err='$err1'"
+   exit $err1
+fi
+echo ""
+file="$dir/apple_health_export/export.xml"
+echo "Step 2. Parsing (getting data from) $file ..."
+#python a-h-d-parser.py $file
+time -p awk -f apple_health_parse $file
+err2="$?"
+if [ "$err2" = "0" ]; then
+   echo "Step 2 Sucess!"
+   echo "Paused (hit Enter to see termgraph's)..."
+   read
+else
+   echo "ERROR: Step 2 failure err='$err2'"
+   exit $err2
+fi
+echo ""
+echo "Step 3. termgraph heart plots"
+List="HeartRate RestingHeartRate WalkingHeartRateAverage HeartRateVariabilitySDNN"
+for t in $List
+do
+   tgfile="$dir/apple_health_export/"$t"_tg.csv"
+   sort $tgfile | termgraph --title "$t vs. Date" --color {green,blue,cyan}
+   echo "Paused (hit Enter)..."
+   read
+done
+tgfile="$dir/apple_health_export/IrregularHeartRhythmEvent_tg.csv"
+sort $tgfile | termgraph --title "Cummulative IrregularHeartRhythmEvent vs. Date" --color green
+echo "Step 3. Done."
+exit
+
